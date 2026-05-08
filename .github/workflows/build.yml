@@ -1,0 +1,47 @@
+name: Build Chatroom Windows 7 x64
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-win7-x64:
+    runs-on: ubuntu-20.04
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install mingw-w64
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y mingw-w64 gcc git
+
+      - name: Setup Go 1.20.14
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.20.14'
+
+      - name: Generate go.sum
+        run: go mod tidy
+
+      - name: Build Windows 7 x64 exe
+        run: |
+          CGO_ENABLED=1 \
+          CC=x86_64-w64-mingw32-gcc \
+          GOOS=windows \
+          GOARCH=amd64 \
+          go build -ldflags="-s -w" -o chatroom-win7-amd64.exe main.go
+
+      - name: Prepare release folder
+        run: |
+          mkdir -p release
+          cp chatroom-win7-amd64.exe release/
+          if [ -f config.json ]; then cp config.json release/; fi
+          if [ -f invite_codes.txt ]; then cp invite_codes.txt release/; fi
+          mkdir -p release/uploads
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: chatroom-win7-amd64
+          path: release/
