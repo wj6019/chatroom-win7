@@ -1,0 +1,3383 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>宇宙公司聊天室</title>
+<style>
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+
+:root {
+  --sidebar-bg: #1a1d24;
+  --header-bg: #1a1d24;
+  --accent: #6c63ff;
+  --text-light: #cdd1db;
+  --border: #e4e6ea;
+  --sidebar-w: 240px;
+  --header-h: 52px;
+  --app-top: 0px;
+  --app-height: 100svh;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  font-family: -apple-system, system-ui, sans-serif;
+  background: #f0f2f5;
+  overscroll-behavior: none;
+  -webkit-overflow-scrolling: auto;
+}
+
+body {
+  position: fixed;
+  inset: 0;
+}
+
+#app {
+  position: fixed;
+  left: 0;
+  top: var(--app-top);
+  width: 100vw;
+  height: var(--app-height);
+  background: #f0f2f5;
+  overflow: hidden;
+  display: flex;
+}
+
+#sidebar {
+  width: var(--sidebar-w);
+  background: var(--sidebar-bg);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  transition: 0.3s;
+  z-index: 200;
+}
+
+#main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+  background: #fff;
+  min-height: 0;
+}
+
+#chat-header {
+  height: var(--header-h);
+  background: var(--header-bg);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  flex-shrink: 0;
+  z-index: 10;
+}
+
+#chat-header-left {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+#chat-title {
+  font-weight: bold;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+#mention-bell {
+  display: none;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255,255,255,0.12);
+  border: 1px solid rgba(255,255,255,0.15);
+  color: #fff;
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+#mention-bell.show {
+  display: inline-flex;
+}
+
+#mention-bell-count {
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: #ff4d4f;
+  color: #fff;
+  font-weight: bold;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+}
+
+#conn-status {
+  display: none;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255,255,255,0.12);
+  border: 1px solid rgba(255,255,255,0.15);
+  color: #fff;
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-size: 12px;
+}
+
+#conn-status.show {
+  display: inline-flex;
+}
+
+#messages-wrap {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 15px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+  overscroll-behavior: contain;
+  position: relative;
+}
+
+#history-actions {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 4px;
+  flex-shrink: 0;
+}
+
+#load-more-btn {
+  border: none;
+  background: #eef2ff;
+  color: #4338ca;
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-size: 12px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+#load-more-btn[disabled] {
+  background: #e5e7eb;
+  color: #9ca3af;
+  cursor: not-allowed;
+}
+
+.history-divider {
+  text-align: center;
+  font-size: 12px;
+  color: #98a2b3;
+  margin: 6px 0;
+}
+
+.history-divider span {
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+  border-radius: 999px;
+  padding: 4px 10px;
+  display: inline-block;
+}
+
+#input-area {
+  min-height: 60px;
+  background: #fff;
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 10px 12px;
+  padding-bottom: calc(10px + env(safe-area-inset-bottom));
+  flex-shrink: 0;
+  z-index: 100;
+  position: relative;
+}
+
+.msg-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 4px;
+  animation: fadeIn 0.15s ease;
+  align-items: flex-start;
+}
+
+@keyframes fadeIn {
+  from { opacity:0; transform:translateY(5px); }
+  to { opacity:1; }
+}
+
+.msg-row.me {
+  flex-direction: row-reverse;
+}
+
+.avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: bold;
+  flex-shrink: 0;
+  user-select: none;
+  -webkit-user-select: none;
+  cursor: pointer;
+}
+
+.msg-main {
+  display: flex;
+  flex-direction: column;
+  max-width: 75%;
+}
+
+.msg-row.me .msg-main {
+  align-items: flex-end;
+}
+
+.msg-meta {
+  font-size: 12px;
+  color: #667085;
+  margin-bottom: 4px;
+  padding: 0 4px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.msg-row.me .msg-meta {
+  justify-content: flex-end;
+}
+
+.msg-sender {
+  font-weight: 600;
+  color: #4b5563;
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.msg-time {
+  color: #98a2b3;
+  font-size: 11px;
+}
+
+.bubble {
+  max-width: 100%;
+  padding: 8px 12px;
+  border-radius: 12px;
+  font-size: 14px;
+  line-height: 1.5;
+  word-break: break-word;
+  white-space: pre-wrap;
+}
+
+.bubble.image-only {
+  padding: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+  line-height: 0 !important;
+  white-space: normal !important;
+}
+
+.msg-row.me .bubble {
+  background: var(--accent);
+  color: #fff;
+  border-bottom-right-radius: 2px;
+}
+
+.msg-row:not(.me) .bubble {
+  background: #e9ebef;
+  color: #1c1e21;
+  border-bottom-left-radius: 2px;
+}
+
+.bubble.image-only {
+  padding: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  overflow: visible;
+}
+
+.image-bubble {
+  position: relative;
+  display: inline-block;
+  max-width: min(68vw, 260px);
+  max-height: 320px;
+  border-radius: 14px;
+  overflow: hidden;
+  background: transparent !important;
+  box-shadow: none;
+  cursor: zoom-in;
+  line-height: 0;
+}
+
+.msg-row.me .image-bubble {
+  border-bottom-right-radius: 4px;
+}
+
+.msg-row:not(.me) .image-bubble {
+  border-bottom-left-radius: 4px;
+}
+
+.image-bubble img {
+  display: block;
+  max-width: min(68vw, 260px);
+  max-height: 320px;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  border-radius: 14px;
+  opacity: 0;
+  transition: opacity .18s ease;
+}
+
+.image-bubble.loaded img {
+  opacity: 1;
+}
+
+.image-loader {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, #edf0f5 25%, #f7f8fb 37%, #edf0f5 63%);
+  background-size: 400% 100%;
+  animation: imageSkeleton 1.2s ease infinite;
+}
+
+.image-bubble.loaded .image-loader {
+  display: none;
+}
+
+@keyframes imageSkeleton {
+  0% { background-position: 100% 0; }
+  100% { background-position: 0 0; }
+}
+
+.msg-row.message-highlight .bubble {
+  animation: mentionPulse 2.5s ease;
+  box-shadow: 0 0 0 2px rgba(255, 193, 7, 0.45);
+  background: #fff3cd !important;
+  color: #1c1e21 !important;
+}
+
+.msg-row.message-highlight .bubble.image-only {
+  background: transparent !important;
+}
+
+@keyframes mentionPulse {
+  0% { box-shadow: 0 0 0 0 rgba(255,193,7,0.75); }
+  25% { box-shadow: 0 0 0 6px rgba(255,193,7,0.20); }
+  100% { box-shadow: 0 0 0 0 rgba(255,193,7,0); }
+}
+
+.mention-text {
+  color: #5b4bff;
+  font-weight: 700;
+}
+
+#msg-input {
+  flex: 1;
+  background: #f0f2f5;
+  border: none;
+  border-radius: 20px;
+  padding: 10px 15px;
+  outline: none;
+  font-size: 15px;
+  max-height: 120px;
+  resize: none;
+  overflow-y: hidden;
+}
+
+#send-btn {
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  margin-left: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+#upload-btn {
+  background: #f0f2f5;
+  color: #4b5563;
+  border: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  margin-right: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 24px;
+  line-height: 1;
+  font-weight: 500;
+}
+
+#upload-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+#upload-btn.uploading {
+  animation: uploadSpin 1s linear infinite;
+}
+
+@keyframes uploadSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+#upload-progress {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: calc(100% + 8px);
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  box-shadow: 0 12px 30px rgba(0,0,0,0.12);
+  padding: 10px 12px;
+  display: none;
+  z-index: 130;
+}
+
+#upload-progress.show {
+  display: block;
+}
+
+.upload-progress-title {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 12px;
+  color: #4b5563;
+  margin-bottom: 8px;
+}
+
+.upload-progress-name {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.upload-progress-bar {
+  height: 7px;
+  background: #eef2ff;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.upload-progress-inner {
+  width: 0%;
+  height: 100%;
+  background: var(--accent);
+  border-radius: 999px;
+  transition: width 0.15s ease;
+}
+
+.file-card {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  min-width: 190px;
+  max-width: 300px;
+  white-space: normal;
+}
+
+.file-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  background: rgba(108,99,255,0.12);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.file-body {
+  min-width: 0;
+  flex: 1;
+}
+
+.file-name {
+  display: block;
+  color: inherit;
+  font-weight: 700;
+  text-decoration: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.file-name:hover {
+  text-decoration: underline;
+}
+
+.file-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+  font-size: 12px;
+  opacity: 0.78;
+}
+
+.file-download {
+  color: inherit;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.file-download:hover {
+  text-decoration: underline;
+}
+
+.msg-row.me .file-icon {
+  background: rgba(255,255,255,0.18);
+}
+
+.msg-row.me .file-name,
+.msg-row.me .file-download {
+  color: #fff;
+}
+
+#image-viewer {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.88);
+  z-index: 2000;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+#image-viewer.show {
+  display: flex;
+}
+
+#image-viewer img {
+  max-width: 96vw;
+  max-height: 92vh;
+  object-fit: contain;
+  border-radius: 12px;
+  box-shadow: 0 12px 40px rgba(0,0,0,.45);
+}
+
+#image-viewer-close {
+  position: fixed;
+  top: 18px;
+  right: 18px;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255,255,255,.18);
+  color: white;
+  font-size: 24px;
+  cursor: pointer;
+}
+
+.user-item {
+  padding:12px 20px;
+  color:#cdd1db;
+  cursor:pointer;
+  border-bottom:1px solid #2d323e;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.user-item.active {
+  background: var(--accent);
+  color: #fff;
+}
+
+.dot {
+  font-size: 10px;
+}
+
+.dot.online {
+  color: #48cfad;
+}
+
+.dot.offline {
+  color: #666;
+}
+
+.unread-badge {
+  background: #ff4d4f;
+  color: white;
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 10px;
+  font-weight: bold;
+  margin-left: auto;
+}
+
+.public-entry-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.public-mention-badge {
+  background: #ffa940;
+  color: white;
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 10px;
+  font-weight: bold;
+  margin-left: 0;
+}
+
+#mention-panel {
+  position: absolute;
+  left: 12px;
+  right: 60px;
+  bottom: calc(100% + 6px);
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  box-shadow: 0 12px 30px rgba(0,0,0,0.12);
+  display: none;
+  max-height: 300px;
+  overflow-y: auto;
+  z-index: 120;
+}
+
+#mention-panel.show {
+  display: block;
+}
+
+.mention-group-title {
+  padding: 10px 14px 6px 14px;
+  font-size: 12px;
+  color: #98a2b3;
+  background: #fff;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.mention-item {
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  border-bottom: 1px solid #f1f3f5;
+}
+
+.mention-item:last-child {
+  border-bottom: none;
+}
+
+.mention-item.active {
+  background: #f3f0ff;
+}
+
+.mention-item:hover {
+  background: #f8f7ff;
+}
+
+.mention-checkbox {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.mention-item-name {
+  flex: 1;
+  font-size: 14px;
+  color: #111827;
+}
+
+.mention-item-status {
+  font-size: 12px;
+  color: #98a2b3;
+}
+
+.mention-panel-footer {
+  position: sticky;
+  bottom: 0;
+  background: #fff;
+  padding: 10px 12px;
+  border-top: 1px solid #eceef3;
+}
+
+#mention-insert-btn {
+  width: 100%;
+  border: none;
+  background: var(--accent);
+  color: #fff;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+#mention-insert-btn:disabled {
+  background: #c7c9d6;
+  cursor: not-allowed;
+}
+
+#mention-toast-list,
+#system-toast-list {
+  position: fixed;
+  top: 62px;
+  right: 12px;
+  z-index: 500;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  pointer-events: none;
+}
+
+#system-toast-list {
+  top: 118px;
+}
+
+.mention-toast,
+.system-toast {
+  min-width: 220px;
+  max-width: 300px;
+  background: #1f2937;
+  color: #fff;
+  border-radius: 12px;
+  padding: 10px 12px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.25);
+  animation: toastIn 0.2s ease;
+  pointer-events: auto;
+}
+
+.mention-toast {
+  cursor: pointer;
+}
+
+.system-toast.info {
+  background: #111827;
+}
+
+.system-toast.warn {
+  background: #92400e;
+}
+
+.mention-toast-title {
+  font-size: 12px;
+  color: #cbd5e1;
+  margin-bottom: 4px;
+}
+
+.mention-toast-body,
+.system-toast-body {
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+@keyframes toastIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 680px) {
+  #sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    transform: translateX(-100%);
+  }
+
+  #sidebar.open {
+    transform: translateX(0);
+  }
+
+  #menu-btn {
+    display: block !important;
+    margin-right: 10px;
+    font-size: 20px;
+    background: none;
+    border: none;
+    color: #fff;
+  }
+
+  #mention-toast-list,
+  #system-toast-list {
+    left: 12px;
+    right: 12px;
+  }
+
+  #mention-toast-list {
+    top: 60px;
+  }
+
+  #system-toast-list {
+    top: 124px;
+  }
+
+  .mention-toast,
+  .system-toast {
+    max-width: none;
+    width: 100%;
+  }
+
+  .image-bubble {
+    max-width: min(72vw, 240px);
+    max-height: 300px;
+  }
+
+  .image-bubble img {
+    max-width: min(72vw, 240px);
+    max-height: 300px;
+    width: auto;
+    height: auto;
+  }
+}
+
+#overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  display: none;
+  z-index: 150;
+}
+
+#overlay.show {
+  display: block;
+}
+
+#nick-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.85);
+  z-index: 1000;
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+
+#nick-modal.show {
+  display: flex;
+}
+
+.modal-box {
+  background: #fff;
+  padding: 28px;
+  border-radius: 16px;
+  width: 85%;
+  max-width: 320px;
+}
+
+.modal-box input {
+  width: 100%;
+  padding: 12px;
+  margin-bottom: 10px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  outline: none;
+}
+
+.modal-box button {
+  width: 100%;
+  padding: 12px;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-weight: bold;
+}
+</style>
+</head>
+<body>
+
+<div id="nick-modal" class="show">
+  <div class="modal-box">
+    <h3>身份认证</h3>
+    <p style="font-size:12px; color:#666; margin: 5px 0 15px 0;">新账号自动注册，老账号请直接登陆</p>
+    <input id="nick-input" type="text" maxlength="15" placeholder="设置昵称">
+    <input id="nick-pass" type="password" placeholder="个人密码">
+    <button id="nick-confirm">进入聊天室</button>
+    <p id="nick-err" style="color:red; font-size:12px; margin-top:10px;"></p>
+  </div>
+</div>
+
+<div id="mention-toast-list"></div>
+<div id="system-toast-list"></div>
+
+<div id="image-viewer">
+  <button id="image-viewer-close" type="button">×</button>
+  <img id="image-viewer-img" src="" alt="图片预览">
+</div>
+
+<div id="app">
+  <div id="overlay"></div>
+
+  <div id="sidebar">
+    <div style="padding:20px; color:#fff; border-bottom:1px solid #2d323e;">
+      <b style="font-size:16px;">💬 通讯录</b><br>
+      <small id="my-nick-badge" style="color:var(--accent);"></small>
+    </div>
+
+    <div id="public-entry" class="user-item active" data-chat="public">
+      <div class="public-entry-wrap">
+        <span class="dot online">#</span>
+        <span>公开频道</span>
+      </div>
+      <span id="public-mention-unread" class="public-mention-badge" style="display:none;">@0</span>
+      <span id="public-unread" class="unread-badge" style="display:none;"></span>
+    </div>
+
+    <div id="user-list"></div>
+  </div>
+
+  <div id="main">
+    <div id="chat-header">
+      <div id="chat-header-left">
+        <button id="menu-btn" style="display:none;">☰</button>
+        <div id="chat-title">公开频道</div>
+      </div>
+      <div id="header-actions">
+        <div id="conn-status">连接中...</div>
+        <button id="mention-bell" type="button">
+          <span>@提醒</span>
+          <span id="mention-bell-count">0</span>
+        </button>
+      </div>
+    </div>
+
+    <div id="messages-wrap"></div>
+
+    <div id="input-area">
+      <div id="mention-panel"></div>
+      <div id="upload-progress">
+        <div class="upload-progress-title">
+          <span id="upload-progress-name" class="upload-progress-name">准备上传...</span>
+          <span id="upload-progress-percent">0%</span>
+        </div>
+        <div class="upload-progress-bar"><div id="upload-progress-inner" class="upload-progress-inner"></div></div>
+      </div>
+      <input type="file" id="fileInput" style="display:none">
+      <button id="upload-btn" type="button" title="上传文件" aria-label="上传文件">+</button>
+      <textarea id="msg-input" maxlength="1000" placeholder="输入消息..." rows="1"></textarea>
+      <button id="send-btn">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="22" y1="2" x2="11" y2="13"></line>
+          <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+        </svg>
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+
+const MAX_PUBLIC_HISTORY = 500;
+const MAX_PRIVATE_HISTORY = 500;
+const MAX_DOM_MESSAGES = 200;
+const RECONNECT_BASE_DELAY = 2000;
+const RECONNECT_MAX_DELAY = 30000;
+const HEARTBEAT_INTERVAL = 30000;
+const HEARTBEAT_TIMEOUT = 10000;
+const MAX_PENDING_MESSAGES = 50;
+const MAX_MESSAGE_LENGTH = 1000;
+const MAX_UPLOAD_SIZE = 100 * 1024 * 1024;
+
+let myNick = '';
+let myPassword = '';
+let currentChat = 'public';
+let ws = null;
+let allUsers = [];
+const privateHistory = {};
+const publicHistory = [];
+const publicMsgIndex = new Map();
+
+let lastReadTimes = {};
+let mentionReadMap = {};
+let unreadCounts = {};
+const mentionNotifications = [];
+
+let wsManuallyClosed = false;
+let reconnectAttempts = 0;
+let reconnectTimer = null;
+let heartbeatTimer = null;
+let heartbeatTimeoutTimer = null;
+let loginConfirmed = false;
+let pendingMessages = [];
+let isUploading = false;
+
+const historyState = {
+  public: {
+    loading: false,
+    hasMore: true,
+    oldestTs: 0,
+    oldestID: 0,
+  },
+  private: {}
+};
+
+const unreadBoundaryMap = {};
+const unreadBoundaryShown = {};
+
+const msgInput = document.getElementById('msg-input');
+const messagesWrap = document.getElementById('messages-wrap');
+const mentionPanel = document.getElementById('mention-panel');
+const mentionBell = document.getElementById('mention-bell');
+const mentionBellCount = document.getElementById('mention-bell-count');
+const mentionToastList = document.getElementById('mention-toast-list');
+const systemToastList = document.getElementById('system-toast-list');
+const connStatus = document.getElementById('conn-status');
+const userListEl = document.getElementById('user-list');
+const fileInput = document.getElementById('fileInput');
+const uploadBtn = document.getElementById('upload-btn');
+const uploadProgress = document.getElementById('upload-progress');
+const uploadProgressName = document.getElementById('upload-progress-name');
+const uploadProgressPercent = document.getElementById('upload-progress-percent');
+const uploadProgressInner = document.getElementById('upload-progress-inner');
+
+const imageViewer = document.getElementById('image-viewer');
+const imageViewerImg = document.getElementById('image-viewer-img');
+
+let layoutTimer = null;
+let lastAppTop = null;
+let lastAppHeight = null;
+let scrollTimer = null;
+let mentionActiveIndex = 0;
+let mentionCandidates = [];
+let longPressTimer = null;
+let selectedMentionUsers = new Set();
+
+function isInputFocused() {
+  return document.activeElement === msgInput;
+}
+
+function setConnStatus(text, visible = true) {
+  connStatus.textContent = text;
+  connStatus.classList.toggle('show', visible);
+}
+
+function showSystemToast(text, level = 'info') {
+  const toast = document.createElement('div');
+  toast.className = `system-toast ${level}`;
+  toast.innerHTML = `<div class="system-toast-body">${escapeHtml(text)}</div>`;
+  systemToastList.appendChild(toast);
+  setTimeout(() => toast.remove(), 2500);
+}
+
+function t(text, level = 'info') {
+  showSystemToast(text, level);
+}
+  
+function showNickModal(message = '') {
+  const modal = document.getElementById('nick-modal');
+  modal.classList.add('show');
+
+  if (message) {
+    document.getElementById('nick-err').textContent = message;
+  }
+}
+
+function hideNickModal() {
+  document.getElementById('nick-modal').classList.remove('show');
+}
+
+function clearHeartbeat() {
+  if (heartbeatTimer) {
+    clearInterval(heartbeatTimer);
+    heartbeatTimer = null;
+  }
+
+  if (heartbeatTimeoutTimer) {
+    clearTimeout(heartbeatTimeoutTimer);
+    heartbeatTimeoutTimer = null;
+  }
+}
+
+function startHeartbeat() {
+  clearHeartbeat();
+
+  heartbeatTimer = setInterval(() => {
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+
+    try {
+      ws.send(JSON.stringify({ type: 'ping' }));
+
+      if (heartbeatTimeoutTimer) clearTimeout(heartbeatTimeoutTimer);
+
+      heartbeatTimeoutTimer = setTimeout(() => {
+        heartbeatTimeoutTimer = null;
+
+        // 上传文件期间不要因为心跳超时主动断开 WS
+        if (isUploading) return;
+
+        try { ws.close(); } catch {}
+      }, HEARTBEAT_TIMEOUT);
+
+    } catch {}
+  }, HEARTBEAT_INTERVAL);
+}
+
+function scheduleReconnect() {
+  if (wsManuallyClosed) return;
+  if (!myNick || !myPassword) return;
+  if (reconnectTimer) return;
+
+  reconnectAttempts += 1;
+
+  const delay = Math.min(
+    RECONNECT_BASE_DELAY * (2 ** Math.max(0, reconnectAttempts - 1)),
+    RECONNECT_MAX_DELAY
+  );
+
+  setConnStatus(`连接已断开，${Math.round(delay / 1000)}秒后重连...`, true);
+
+  reconnectTimer = setTimeout(() => {
+    reconnectTimer = null;
+    connectWs(true);
+  }, delay);
+}
+
+function syncViewportLayout() {
+  const root = document.documentElement;
+
+  let top = 0;
+  let height = window.innerHeight;
+
+  if (window.visualViewport) {
+    top = window.visualViewport.offsetTop || 0;
+    height = window.visualViewport.height || window.innerHeight;
+  }
+
+  const newTop = Math.round(top);
+  const newHeight = Math.round(height);
+
+  if (newTop !== lastAppTop) {
+    root.style.setProperty('--app-top', newTop + 'px');
+    lastAppTop = newTop;
+  }
+
+  if (newHeight !== lastAppHeight) {
+    root.style.setProperty('--app-height', newHeight + 'px');
+    lastAppHeight = newHeight;
+  }
+
+  if (isInputFocused() && window.scrollY > 0) {
+    window.scrollTo(0, 0);
+  }
+}
+
+function scheduleViewportLayout() {
+  if (layoutTimer) clearTimeout(layoutTimer);
+
+  layoutTimer = setTimeout(() => {
+    requestAnimationFrame(() => {
+      syncViewportLayout();
+    });
+  }, 50);
+}
+
+function autoResize() {
+  msgInput.style.height = 'auto';
+
+  if (msgInput.scrollHeight > 120) {
+    msgInput.style.height = '120px';
+    msgInput.style.overflowY = 'auto';
+  } else {
+    msgInput.style.height = msgInput.scrollHeight + 'px';
+    msgInput.style.overflowY = 'hidden';
+  }
+
+  scheduleViewportLayout();
+
+  const wrap = messagesWrap;
+
+  if (wrap.scrollHeight - wrap.scrollTop - wrap.clientHeight < 80) {
+    scrollBottom();
+  }
+}
+
+function scrollBottom(force = false) {
+  if (!force) {
+    const distance =
+      messagesWrap.scrollHeight -
+      messagesWrap.scrollTop -
+      messagesWrap.clientHeight;
+
+    if (distance > 120) return;
+  }
+
+  if (scrollTimer) cancelAnimationFrame(scrollTimer);
+
+  scrollTimer = requestAnimationFrame(() => {
+    messagesWrap.scrollTop = messagesWrap.scrollHeight;
+  });
+}
+
+function closeSidebar() {
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('overlay').classList.remove('show');
+}
+
+function escapeHtml(str) {
+  return (str || '').replace(/[&<>"']/g, s => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;'
+  }[s]));
+}
+
+function escapeRegExp(str) {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function formatTime(ts) {
+  const d = new Date(ts * 1000);
+  const hh = String(d.getHours()).padStart(2, '0');
+  const mm = String(d.getMinutes()).padStart(2, '0');
+  return `${hh}:${mm}`;
+}
+
+function renderContentWithMentions(content, mentions = []) {
+  let html = escapeHtml(content);
+
+  const unique = [...new Set((mentions || []).filter(Boolean))]
+    .sort((a, b) => b.length - a.length);
+
+  unique.forEach(name => {
+    const re = new RegExp('@' + escapeRegExp(name), 'g');
+
+    html = html.replace(
+      re,
+      `<span class="mention-text">@${escapeHtml(name)}</span>`
+    );
+  });
+
+  return html;
+}
+
+function ensurePrivateState(peer) {
+  if (!historyState.private[peer]) {
+    historyState.private[peer] = {
+      loading: false,
+      hasMore: null,
+      oldestTs: 0,
+      oldestID: 0,
+    };
+  }
+
+  return historyState.private[peer];
+}
+
+function getChatState(chat) {
+  if (chat === 'public') return historyState.public;
+  return ensurePrivateState(chat);
+}
+
+function updateOldestCursor(chat) {
+  const state = getChatState(chat);
+
+  const list = chat === 'public'
+    ? publicHistory
+    : (privateHistory[chat] || []);
+
+  if (!list.length) {
+    state.oldestTs = 0;
+    state.oldestID = 0;
+    return;
+  }
+
+  const oldest = list[0];
+
+  state.oldestTs = oldest.timestamp || 0;
+  state.oldestID = oldest.seq || oldest.db_id || 0;
+}
+
+function trimHistoryList(list, max, isPublic) {
+  if (!Array.isArray(list)) return;
+  if (list.length <= max) return;
+
+  const removed = list.splice(0, list.length - max);
+
+  if (isPublic) {
+    for (const item of removed) {
+      if (item && item.id) {
+        publicMsgIndex.delete(item.id);
+      }
+    }
+  }
+}
+
+function parseMentionsFromText(content) {
+  if (!content) return [];
+
+  const found = [];
+
+  const sortedUsers = [
+    ...allUsers.map(u => u.name),
+    myNick
+  ]
+  .filter(Boolean)
+  .sort((a, b) => b.length - a.length);
+
+  for (let i = 0; i < content.length; i++) {
+    if (content[i] !== '@') continue;
+
+    const prev = i === 0 ? '' : content[i - 1];
+
+    if (prev && !/\s/.test(prev)) continue;
+
+    let matched = '';
+
+    for (const name of sortedUsers) {
+      if (
+        content.slice(i + 1, i + 1 + name.length) === name
+      ) {
+        const after = content[i + 1 + name.length] || '';
+
+        if (
+          after === '' ||
+          /\s|，|。|,|!|！|\?|？|:|：|;|；/.test(after)
+        ) {
+          matched = name;
+          break;
+        }
+      }
+    }
+
+    if (
+      matched &&
+      matched !== myNick &&
+      !found.includes(matched)
+    ) {
+      found.push(matched);
+    }
+  }
+
+  return found;
+}
+
+function getAllMentionUsers() {
+  return allUsers
+    .filter(u => u.name !== myNick)
+    .sort((a, b) => {
+      if (a.online !== b.online) {
+        return a.online ? -1 : 1;
+      }
+
+      return a.name.localeCompare(b.name, 'zh-CN');
+    });
+}
+
+function getSortedMentionUsers(keyword = '') {
+  const k = keyword.trim().toLowerCase();
+
+  return getAllMentionUsers()
+    .filter(u => !k || u.name.toLowerCase().includes(k));
+}
+
+function getMentionQueryInfo() {
+  if (currentChat !== 'public') return null;
+
+  const value = msgInput.value;
+  const pos = msgInput.selectionStart;
+  const before = value.slice(0, pos);
+
+  const match = before.match(/(?:^|\s)@([^\s@]*)$/);
+
+  if (!match) return null;
+
+  const atIndex = before.lastIndexOf('@');
+
+  if (atIndex < 0) return null;
+
+  const prevChar = atIndex > 0 ? before[atIndex - 1] : '';
+
+  if (prevChar && !/\s/.test(prevChar)) return null;
+
+  return {
+    keyword: match[1] || '',
+    atIndex,
+    caret: pos
+  };
+}
+
+function isMentionAlreadyRead(msg) {
+  if (!msg || !msg.id) return false;
+  return !!mentionReadMap[msg.id];
+}
+
+function shouldAddMentionNotification(msg) {
+  if (!msg || msg.type !== 'public') return false;
+  if (msg.from === myNick) return false;
+
+  if (
+    !Array.isArray(msg.mentions) ||
+    !msg.mentions.includes(myNick)
+  ) {
+    return false;
+  }
+
+  if (isMentionAlreadyRead(msg)) return false;
+
+  return true;
+}
+
+function renderMentionPanel() {
+  const info = getMentionQueryInfo();
+
+  if (!info) {
+    hideMentionPanel();
+    return;
+  }
+
+  const allMentionUsers = getAllMentionUsers();
+  const filteredUsers = getSortedMentionUsers(info.keyword);
+
+  mentionCandidates = [
+    { type: 'all', name: '__ALL__', online: null }
+  ];
+
+  const onlineUsers = filteredUsers.filter(u => u.online);
+  const offlineUsers = filteredUsers.filter(u => !u.online);
+
+  let html = '';
+
+  html += `
+    <div class="mention-item ${mentionActiveIndex === 0 ? 'active' : ''}" data-type="all" data-name="__ALL__">
+      <input class="mention-checkbox" type="checkbox" data-type="all-checkbox" ${isAllUsersSelected() ? 'checked' : ''}>
+      <span class="mention-item-name">所有用户</span>
+      <span class="mention-item-status">${allMentionUsers.length}人</span>
+    </div>
+  `;
+
+  if (onlineUsers.length) {
+    html += `<div class="mention-group-title">在线用户</div>`;
+
+    onlineUsers.forEach(u => {
+      mentionCandidates.push({ type: 'user', ...u });
+
+      const idx = mentionCandidates.length - 1;
+
+      html += `
+        <div class="mention-item ${mentionActiveIndex === idx ? 'active' : ''}" data-type="user" data-name="${escapeHtml(u.name)}">
+          <input class="mention-checkbox" type="checkbox" data-type="user-checkbox" data-name="${escapeHtml(u.name)}" ${selectedMentionUsers.has(u.name) ? 'checked' : ''}>
+          <span class="dot online">●</span>
+          <span class="mention-item-name">${escapeHtml(u.name)}</span>
+          <span class="mention-item-status">在线</span>
+        </div>
+      `;
+    });
+  }
+
+  if (offlineUsers.length) {
+    html += `<div class="mention-group-title">离线用户</div>`;
+
+    offlineUsers.forEach(u => {
+      mentionCandidates.push({ type: 'user', ...u });
+
+      const idx = mentionCandidates.length - 1;
+
+      html += `
+        <div class="mention-item ${mentionActiveIndex === idx ? 'active' : ''}" data-type="user" data-name="${escapeHtml(u.name)}">
+          <input class="mention-checkbox" type="checkbox" data-type="user-checkbox" data-name="${escapeHtml(u.name)}" ${selectedMentionUsers.has(u.name) ? 'checked' : ''}>
+          <span class="dot offline">○</span>
+          <span class="mention-item-name">${escapeHtml(u.name)}</span>
+          <span class="mention-item-status">离线</span>
+        </div>
+      `;
+    });
+  }
+
+  html += `
+    <div class="mention-panel-footer">
+      <button id="mention-insert-btn" ${selectedMentionUsers.size === 0 ? 'disabled' : ''}>
+        插入已选用户(${selectedMentionUsers.size})
+      </button>
+    </div>
+  `;
+
+  mentionPanel.innerHTML = html;
+  mentionPanel.classList.add('show');
+}
+
+function showMentionPanel() {
+  renderMentionPanel();
+}
+
+function hideMentionPanel() {
+  mentionPanel.classList.remove('show');
+  mentionPanel.innerHTML = '';
+  mentionCandidates = [];
+  mentionActiveIndex = 0;
+  selectedMentionUsers.clear();
+}
+
+function insertMention(name, withGreeting = false) {
+  const info = getMentionQueryInfo();
+
+  const value = msgInput.value;
+
+  let newValue = value;
+  let caretPos = 0;
+
+  if (info) {
+    const before = value.slice(0, info.atIndex);
+    const after = value.slice(info.caret);
+
+    const mentionText = withGreeting
+      ? `@${name} 在吗 `
+      : `@${name} `;
+
+    newValue = before + mentionText + after;
+
+    caretPos = (before + mentionText).length;
+
+  } else {
+
+    const prefix =
+      value && !/\s$/.test(value)
+        ? value + ' '
+        : value;
+
+    const mentionText = withGreeting
+      ? `@${name} 在吗 `
+      : `@${name} `;
+
+    newValue = prefix + mentionText;
+    caretPos = newValue.length;
+  }
+
+  msgInput.value = newValue;
+
+  msgInput.focus();
+  msgInput.setSelectionRange(caretPos, caretPos);
+
+  autoResize();
+  hideMentionPanel();
+}
+
+function insertMultipleMentions(names) {
+  const validNames = [...new Set(names.filter(Boolean))];
+
+  if (!validNames.length) return;
+
+  const info = getMentionQueryInfo();
+  const value = msgInput.value;
+
+  const mentionText =
+    validNames.map(name => `@${name}`).join(' ') + ' ';
+
+  let newValue = value;
+  let caretPos = 0;
+
+  if (info) {
+    const before = value.slice(0, info.atIndex);
+    const after = value.slice(info.caret);
+
+    newValue = before + mentionText + after;
+    caretPos = (before + mentionText).length;
+
+  } else {
+
+    const prefix =
+      value && !/\s$/.test(value)
+        ? value + ' '
+        : value;
+
+    newValue = prefix + mentionText;
+    caretPos = newValue.length;
+  }
+
+  msgInput.value = newValue;
+
+  msgInput.focus();
+  msgInput.setSelectionRange(caretPos, caretPos);
+
+  autoResize();
+  hideMentionPanel();
+}
+
+function insertAllUsersMention() {
+  const names = getAllMentionUsers().map(u => u.name);
+  insertMultipleMentions(names);
+}
+
+function isAllUsersSelected() {
+  const allNames = getAllMentionUsers().map(u => u.name);
+
+  if (!allNames.length) return false;
+
+  return allNames.every(name => selectedMentionUsers.has(name));
+}
+
+function toggleSelectAllUsers(checked) {
+  const allNames = getAllMentionUsers().map(u => u.name);
+
+  if (checked) {
+    allNames.forEach(name => selectedMentionUsers.add(name));
+  } else {
+    allNames.forEach(name => selectedMentionUsers.delete(name));
+  }
+
+  renderMentionPanel();
+}
+
+function toggleSelectOneUser(name, checked) {
+  if (!name) return;
+
+  if (checked) {
+    selectedMentionUsers.add(name);
+  } else {
+    selectedMentionUsers.delete(name);
+  }
+
+  renderMentionPanel();
+}
+
+function insertSelectedMentionUsers() {
+  const names = getAllMentionUsers()
+    .map(u => u.name)
+    .filter(name => selectedMentionUsers.has(name));
+
+  insertMultipleMentions(names);
+}
+
+function updateMentionBell() {
+  const count = mentionNotifications.length;
+
+  mentionBellCount.textContent = count;
+
+  mentionBell.classList.toggle('show', count > 0);
+
+  const badge = document.getElementById('public-mention-unread');
+
+  badge.style.display = count > 0 ? 'inline-flex' : 'none';
+  badge.textContent = '@' + count;
+}
+
+function pushMentionNotification(msg) {
+  if (!msg || !msg.id) return;
+
+  if (mentionNotifications.some(x => x.id === msg.id)) {
+    return;
+  }
+
+  mentionNotifications.push(msg);
+
+  updateMentionBell();
+}
+
+function removeMentionNotificationByID(id) {
+  const idx = mentionNotifications.findIndex(x => x.id === id);
+
+  if (idx >= 0) {
+    mentionNotifications.splice(idx, 1);
+    updateMentionBell();
+  }
+}
+
+function consumeNextMentionNotification() {
+  if (!mentionNotifications.length) return null;
+
+  const item = mentionNotifications.shift();
+
+  updateMentionBell();
+
+  return item;
+}
+
+function markMentionReadLocal(id) {
+  if (!id) return;
+
+  mentionReadMap[id] = true;
+
+  removeMentionNotificationByID(id);
+}
+
+function sendWs(data) {
+  const raw = JSON.stringify(data);
+
+  if (
+    ws &&
+    ws.readyState === WebSocket.OPEN &&
+    loginConfirmed
+  ) {
+    ws.send(raw);
+    return true;
+  }
+
+  pendingMessages.push(raw);
+
+  if (pendingMessages.length > MAX_PENDING_MESSAGES) {
+    pendingMessages =
+      pendingMessages.slice(-MAX_PENDING_MESSAGES);
+  }
+
+  return false;
+}
+
+function flushPendingMessages() {
+  if (!ws) return;
+  if (ws.readyState !== WebSocket.OPEN) return;
+  if (!loginConfirmed) return;
+  if (!pendingMessages.length) return;
+
+  const list = pendingMessages.slice();
+
+  pendingMessages = [];
+
+  for (const raw of list) {
+    try {
+      ws.send(raw);
+    } catch {}
+  }
+}
+
+function markMentionReadRemote(id) {
+  if (!id) return;
+
+  sendWs({
+    type: 'mention_read_ack',
+    content: id
+  });
+}
+
+function showMentionToast(msg) {
+  const toast = document.createElement('div');
+
+  toast.className = 'mention-toast';
+
+  toast.innerHTML = `
+    <div class="mention-toast-title">${escapeHtml(msg.from)} @了你</div>
+    <div class="mention-toast-body">${escapeHtml(msg.content)}</div>
+  `;
+
+  toast.onclick = () => {
+
+    if (!isMentionAlreadyRead(msg)) {
+      markMentionReadLocal(msg.id);
+      markMentionReadRemote(msg.id);
+    }
+
+    jumpToMessage(msg.id);
+
+    toast.remove();
+  };
+
+  mentionToastList.appendChild(toast);
+
+  setTimeout(() => toast.remove(), 4000);
+}
+
+function updateUserList() {
+  const pubCount = unreadCounts['public'] || 0;
+
+  const pubBadge = document.getElementById('public-unread');
+
+  pubBadge.style.display = pubCount > 0 ? 'block' : 'none';
+
+  pubBadge.textContent = pubCount;
+
+  userListEl.innerHTML = allUsers.map(u => {
+
+    const count = unreadCounts[u.name] || 0;
+
+    const badge = count > 0
+      ? `<span class="unread-badge">${count}</span>`
+      : '';
+
+    return `
+      <div class="user-item ${currentChat === u.name ? 'active' : ''}" data-chat="${escapeHtml(u.name)}">
+        <span class="dot ${u.online ? 'online' : 'offline'}">${u.online ? '●' : '○'}</span>
+        <span style="flex:1">${escapeHtml(u.name)}</span>
+        ${badge}
+      </div>
+    `;
+  }).join('');
+
+  updateMentionBell();
+}
+
+function maybeRecordUnreadBoundary(chat) {
+  if (unreadBoundaryMap[chat] !== undefined) return;
+
+  const count = unreadCounts[chat] || 0;
+
+  if (count > 0) {
+    unreadBoundaryMap[chat] = lastReadTimes[chat] || 0;
+    unreadBoundaryShown[chat] = false;
+  }
+}
+
+function clickUser(nick) {
+  maybeRecordUnreadBoundary(nick);
+
+  currentChat = nick;
+
+  delete unreadCounts[nick];
+
+  const nowTs = Math.floor(Date.now() / 1000);
+
+  lastReadTimes[nick] = nowTs;
+
+  sendWs({
+    type: 'read_ack',
+    to: nick === 'public' ? '' : nick
+  });
+
+  if (nick === 'public') {
+    for (const msg of publicHistory) {
+      const mentionedMe =
+        Array.isArray(msg.mentions) &&
+        msg.mentions.includes(myNick);
+
+      if (mentionedMe && !isMentionAlreadyRead(msg)) {
+        markMentionReadLocal(msg.id);
+        markMentionReadRemote(msg.id);
+      }
+    }
+  }
+
+  document.getElementById('chat-title').textContent =
+    nick === 'public'
+      ? '公开频道'
+      : '私聊: ' + nick;
+
+  updateUserList();
+  renderMessages();
+  closeSidebar();
+  hideMentionPanel();
+}
+
+function createDividerNode() {
+  const div = document.createElement('div');
+
+  div.className = 'history-divider';
+  div.dataset.unreadBoundary = '1';
+
+  div.innerHTML = `<span>以上为更早的已读历史</span>`;
+
+  return div;
+}
+
+function renderHistoryActions() {
+  const state = getChatState(currentChat);
+
+  const div = document.createElement('div');
+  div.id = 'history-actions';
+
+  const btn = document.createElement('button');
+  btn.id = 'load-more-btn';
+
+  const hasMoreKnownFalse = state.hasMore === false;
+  const loading = !!state.loading;
+
+  btn.textContent =
+    loading
+      ? '加载中...'
+      : (
+        hasMoreKnownFalse
+          ? '没有更多消息'
+          : '加载更多消息'
+      );
+
+  btn.disabled = loading || hasMoreKnownFalse;
+
+  btn.onclick = () => loadMoreHistory();
+
+  div.appendChild(btn);
+
+  return div;
+}
+
+function createLongPressHandlers(target, name) {
+  const start = () => {
+    if (!name || name === myNick) return;
+
+    longPressTimer =
+      setTimeout(() => insertMentionDirect(name), 450);
+  };
+
+  const clear = () => {
+    if (longPressTimer) {
+      clearTimeout(longPressTimer);
+      longPressTimer = null;
+    }
+  };
+
+  target.addEventListener('touchstart', start, { passive: true });
+  target.addEventListener('touchend', clear);
+  target.addEventListener('touchcancel', clear);
+  target.addEventListener('mousedown', start);
+  target.addEventListener('mouseup', clear);
+  target.addEventListener('mouseleave', clear);
+}
+
+function insertMentionDirect(name) {
+  const value = msgInput.value;
+
+  const prefix =
+    value && !/\s$/.test(value)
+      ? value + ' '
+      : value;
+
+  const newValue = prefix + `@${name} `;
+
+  msgInput.value = newValue;
+
+  msgInput.focus();
+  msgInput.setSelectionRange(newValue.length, newValue.length);
+
+  autoResize();
+  hideMentionPanel();
+}
+
+function formatFileSize(bytes) {
+  const n = Number(bytes || 0);
+
+  if (!Number.isFinite(n) || n <= 0) return '未知大小';
+
+  const units = ['B', 'KB', 'MB', 'GB'];
+
+  let value = n;
+  let idx = 0;
+
+  while (value >= 1024 && idx < units.length - 1) {
+    value /= 1024;
+    idx++;
+  }
+
+  return `${value >= 10 || idx === 0 ? value.toFixed(0) : value.toFixed(1)} ${units[idx]}`;
+}
+
+function getFileExtension(name = '') {
+  const clean = String(name || '').split('?')[0];
+  const idx = clean.lastIndexOf('.');
+
+  return idx >= 0
+    ? clean.slice(idx + 1).toLowerCase()
+    : '';
+}
+
+function getFileIcon(msg) {
+  const ext = getFileExtension(msg.file_name || msg.file_url || '');
+  const mime = String(msg.file_mime || '').toLowerCase();
+
+  if (
+    mime.startsWith('image/') ||
+    ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg'].includes(ext)
+  ) {
+    return '🖼️';
+  }
+
+  if (
+    mime.startsWith('video/') ||
+    ['mp4', 'mov', 'avi', 'mkv', 'webm'].includes(ext)
+  ) {
+    return '🎬';
+  }
+
+  if (
+    mime.startsWith('audio/') ||
+    ['mp3', 'wav', 'flac', 'm4a', 'ogg'].includes(ext)
+  ) {
+    return '🎵';
+  }
+
+  if (['pdf'].includes(ext)) return '📕';
+  if (['doc', 'docx'].includes(ext)) return '📘';
+  if (['xls', 'xlsx', 'csv'].includes(ext)) return '📗';
+  if (['ppt', 'pptx'].includes(ext)) return '📙';
+  if (['zip', 'rar', '7z', 'tar', 'gz'].includes(ext)) return '🗜️';
+
+  return '📎';
+}
+
+function isImageFile(msg) {
+  const ext = getFileExtension(msg.file_name || msg.file_url || '');
+  const mime = String(msg.file_mime || '').toLowerCase();
+
+  return (
+    mime.startsWith('image/') ||
+    ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg'].includes(ext)
+  );
+}
+
+function isNearBottom(threshold = 140) {
+  return (
+    messagesWrap.scrollHeight -
+    messagesWrap.scrollTop -
+    messagesWrap.clientHeight
+  ) < threshold;
+}
+
+function scheduleStickyBottom(times = [0, 60, 160, 360]) {
+  times.forEach(t => {
+    setTimeout(() => {
+      scrollBottom(true);
+    }, t);
+  });
+}
+
+function bindImageLoadHandlers(root, shouldStickBottom) {
+  const imgs = root.querySelectorAll('.image-bubble img');
+
+  imgs.forEach(img => {
+    if (img.dataset.boundLoad === '1') return;
+
+    img.dataset.boundLoad = '1';
+
+    const bubble = img.closest('.image-bubble');
+
+    const done = () => {
+      if (bubble) bubble.classList.add('loaded');
+
+      if (shouldStickBottom) {
+        scheduleStickyBottom([0, 40, 120, 260]);
+      }
+    };
+
+    if (img.complete && img.naturalWidth > 0) {
+      done();
+    } else {
+      img.addEventListener('load', done, { once: true });
+      img.addEventListener('error', done, { once: true });
+    }
+  });
+}
+
+function openImageViewer(url) {
+  if (!url) return;
+
+  imageViewerImg.src = url;
+  imageViewer.classList.add('show');
+}
+
+function closeImageViewer() {
+  imageViewer.classList.remove('show');
+  imageViewerImg.src = '';
+}
+
+function fileToImage(file) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      resolve(img);
+    };
+
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error('图片读取失败'));
+    };
+
+    img.src = url;
+  });
+}
+
+async function compressImageBeforeUpload(file) {
+  const mime = (file.type || '').toLowerCase();
+  const name = file.name || 'image';
+
+  if (!mime.startsWith('image/')) return file;
+  if (mime === 'image/gif' || mime === 'image/svg+xml') return file;
+
+  try {
+    const img = await fileToImage(file);
+
+    const maxSide = 1600;
+
+    let { width, height } = img;
+
+    if (
+      width <= maxSide &&
+      height <= maxSide &&
+      file.size < 900 * 1024
+    ) {
+      return file;
+    }
+
+    const ratio = Math.min(
+      maxSide / width,
+      maxSide / height,
+      1
+    );
+
+    width = Math.round(width * ratio);
+    height = Math.round(height * ratio);
+
+    const canvas = document.createElement('canvas');
+
+    canvas.width = width;
+    canvas.height = height;
+
+    const ctx = canvas.getContext('2d');
+
+    ctx.drawImage(img, 0, 0, width, height);
+
+    const blob = await new Promise(resolve => {
+      canvas.toBlob(resolve, 'image/jpeg', 0.82);
+    });
+
+    if (!blob || blob.size >= file.size) return file;
+
+    const newName =
+      name.replace(/\.[^.]+$/, '') + '.jpg';
+
+    return new File(
+      [blob],
+      newName,
+      { type: 'image/jpeg' }
+    );
+
+  } catch {
+    return file;
+  }
+}
+
+function buildFileMessageHTML(msg) {
+  const name = escapeHtml(msg.file_name || '文件');
+  const url = escapeHtml(msg.file_url || '#');
+  const size = formatFileSize(msg.file_size);
+  const icon = getFileIcon(msg);
+
+  if (isImageFile(msg)) {
+    return `
+      <div class="image-bubble" data-full-url="${url}">
+        <div class="image-loader"></div>
+        <img src="${url}" alt="${name}" loading="lazy" decoding="async">
+      </div>
+    `;
+  }
+
+  return `
+    <div class="file-card">
+      <div class="file-icon">${icon}</div>
+      <div class="file-body">
+        <a class="file-name" href="${url}" target="_blank" rel="noopener" download="${name}">${name}</a>
+        <div class="file-meta">
+          <span>${size}</span>
+          <span>·</span>
+          <a class="file-download" href="${url}" target="_blank" rel="noopener" download="${name}">下载</a>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function setUploadProgress(show, percent = 0, name = '') {
+  uploadProgress.classList.toggle('show', !!show);
+
+  uploadBtn.disabled = !!show;
+  uploadBtn.classList.toggle('uploading', !!show);
+
+  const p =
+    Math.max(0, Math.min(100, Math.round(percent || 0)));
+
+  uploadProgressName.textContent = name || '准备上传...';
+  uploadProgressPercent.textContent = p + '%';
+  uploadProgressInner.style.width = p + '%';
+}
+
+function uploadFileToServer(file) {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    const form = new FormData();
+
+    form.append('file', file);
+
+    xhr.open('POST', '/upload');
+
+    xhr.upload.onprogress = e => {
+      if (e.lengthComputable) {
+        setUploadProgress(
+          true,
+          (e.loaded / e.total) * 100,
+          file.name
+        );
+      } else {
+        setUploadProgress(true, 5, file.name);
+      }
+    };
+
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try {
+          resolve(JSON.parse(xhr.responseText));
+        } catch (e) {
+          reject(e);
+        }
+      } else {
+        reject(new Error(xhr.responseText || '上传失败'));
+      }
+    };
+
+    xhr.onerror = () => {
+      reject(new Error('网络异常'));
+    };
+
+    xhr.send(form);
+  });
+}
+
+async function handleFileSelected() {
+  let file = fileInput.files && fileInput.files[0];
+
+  if (!file) return;
+
+  if (!myNick || !myPassword || !loginConfirmed) {
+    showSystemToast('请先进入聊天室再上传文件', 'warn');
+    fileInput.value = '';
+    return;
+  }
+
+  if (file.size > MAX_UPLOAD_SIZE) {
+    t('文件不能超过100MB', 'warn');
+    fileInput.value = '';
+    return;
+  }
+  
+  isUploading = true;
+  
+  try {
+    const originalName = file.name;
+
+    setUploadProgress(true, 0, originalName);
+
+    if ((file.type || '').toLowerCase().startsWith('image/')) {
+      const compressed = await compressImageBeforeUpload(file);
+
+      if (compressed !== file) {
+        t('图片已自动压缩上传', 'info');
+        file = compressed;
+      }
+    }
+
+    if (file.size > MAX_UPLOAD_SIZE) {
+      t('压缩后文件仍超过100MB', 'warn');
+      fileInput.value = '';
+      setUploadProgress(false, 0, '');
+      return;
+    }
+
+    const data = await uploadFileToServer(file);
+
+    setUploadProgress(true, 100, file.name);
+
+    const isImg =
+      (data.mime || file.type || '')
+        .toLowerCase()
+        .startsWith('image/');
+
+    const payload = {
+      type: currentChat === 'public' ? 'public' : 'private',
+      to: currentChat === 'public' ? '' : currentChat,
+      content: isImg ? '[图片]' : `📎 ${data.name || file.name}`,
+      file_name: data.name || file.name,
+      file_url: data.url,
+      file_size: data.size || file.size,
+      file_mime:
+        data.mime ||
+        file.type ||
+        'application/octet-stream'
+    };
+
+    const sent = sendWs(payload);
+
+    if (sent || (myNick && myPassword)) {
+      t(
+        isImg ? '图片上传完成' : '文件上传完成',
+        'info'
+      );
+
+      scheduleStickyBottom();
+    }
+
+  } catch (e) {
+    t(
+      '上传失败：' + (e.message || '未知错误'),
+      'warn'
+    );
+
+  } finally {
+    isUploading = false;
+    setTimeout(() => setUploadProgress(false, 0, ''), 450);
+    fileInput.value = '';
+  }
+}
+
+function buildMessageNode(msg) {
+  const isMe = msg.from === myNick;
+
+  const div = document.createElement('div');
+
+  div.className = `msg-row ${isMe ? 'me' : ''}`;
+
+  if (msg.id) {
+    div.dataset.id = msg.id;
+
+    if (msg.type === 'public') {
+      publicMsgIndex.set(msg.id, div);
+    }
+  }
+
+  div.dataset.timestamp = String(msg.timestamp || 0);
+
+  const avatar = document.createElement('div');
+
+  avatar.className = 'avatar';
+  avatar.textContent =
+    (msg.from || '?')[0]?.toUpperCase?.() || '?';
+  avatar.dataset.user = msg.from || '';
+
+  const msgMain = document.createElement('div');
+
+  msgMain.className = 'msg-main';
+
+  const meta = document.createElement('div');
+
+  meta.className = 'msg-meta';
+
+  const sender = document.createElement('span');
+
+  sender.className = 'msg-sender';
+  sender.textContent = msg.from || '';
+  sender.dataset.user = msg.from || '';
+
+  const timeEl = document.createElement('span');
+
+  timeEl.className = 'msg-time';
+  timeEl.textContent =
+    formatTime(msg.timestamp || Math.floor(Date.now() / 1000));
+
+  meta.appendChild(sender);
+  meta.appendChild(timeEl);
+
+  const bubble = document.createElement('div');
+
+  bubble.className = 'bubble';
+
+  if (msg.file_url) {
+    if (isImageFile(msg)) {
+      bubble.classList.add('image-only');
+    }
+
+    bubble.innerHTML = buildFileMessageHTML(msg);
+
+  } else {
+    bubble.innerHTML =
+      renderContentWithMentions(
+        msg.content || '',
+        msg.mentions || []
+      );
+  }
+
+  msgMain.appendChild(meta);
+  msgMain.appendChild(bubble);
+
+  div.appendChild(avatar);
+  div.appendChild(msgMain);
+
+  createLongPressHandlers(avatar, msg.from);
+  createLongPressHandlers(sender, msg.from);
+
+  return div;
+}
+
+function appendMsgUIWithoutScroll(msg) {
+  const node = buildMessageNode(msg);
+
+  messagesWrap.appendChild(node);
+
+  bindImageLoadHandlers(node, false);
+}
+
+function trimMessageDom() {
+  const rows = messagesWrap.querySelectorAll('.msg-row');
+
+  if (rows.length <= MAX_DOM_MESSAGES) return;
+
+  const removeCount = rows.length - MAX_DOM_MESSAGES;
+
+  for (let i = 0; i < removeCount; i++) {
+    const node = rows[i];
+
+    if (node.dataset && node.dataset.id) {
+      publicMsgIndex.delete(node.dataset.id);
+    }
+
+    node.remove();
+  }
+}
+
+function appendMsgUI(msg) {
+  const shouldStick =
+    isNearBottom(160) ||
+    msg.from === myNick;
+
+  const node = buildMessageNode(msg);
+
+  messagesWrap.appendChild(node);
+
+  trimMessageDom();
+  insertBoundaryDividerIfNeeded(currentChat);
+
+  if (shouldStick) {
+    scheduleStickyBottom();
+  }
+
+  bindImageLoadHandlers(node, shouldStick);
+
+  const mentionedMe =
+    Array.isArray(msg.mentions) &&
+    msg.mentions.includes(myNick);
+
+  if (
+    msg.type === 'public' &&
+    mentionedMe &&
+    msg.from !== myNick &&
+    currentChat === 'public'
+  ) {
+    flashMessageById(msg.id);
+  }
+}
+
+function flashMessageById(id) {
+  if (!id) return;
+
+  const el = messagesWrap.querySelector(`[data-id="${id}"]`);
+
+  if (!el) return;
+
+  el.classList.remove('message-highlight');
+
+  void el.offsetWidth;
+
+  el.classList.add('message-highlight');
+
+  setTimeout(() => {
+    el.classList.remove('message-highlight');
+  }, 2600);
+}
+
+function jumpToMessage(id) {
+  if (!id) return;
+
+  if (currentChat !== 'public') clickUser('public');
+
+  requestAnimationFrame(() => {
+    const el =
+      messagesWrap.querySelector(`[data-id="${id}"]`);
+
+    if (!el) return;
+
+    el.scrollIntoView({
+      behavior: 'smooth',
+      block: 'center'
+    });
+
+    setTimeout(() => flashMessageById(id), 250);
+  });
+}
+
+function appendSystemMsg(text) {
+  const div = document.createElement('div');
+
+  div.style.cssText =
+    "text-align:center; font-size:12px; color:#999; margin:10px 0;";
+
+  div.textContent = text;
+
+  messagesWrap.appendChild(div);
+
+  trimMessageDom();
+}
+
+function resetRuntimeOnFreshLogin() {
+  allUsers = [];
+
+  publicHistory.length = 0;
+
+  Object.keys(privateHistory)
+    .forEach(k => delete privateHistory[k]);
+
+  publicMsgIndex.clear();
+
+  unreadCounts = {};
+  lastReadTimes = {};
+  mentionNotifications.length = 0;
+  mentionReadMap = {};
+  pendingMessages = [];
+
+  Object.keys(historyState.private)
+    .forEach(k => delete historyState.private[k]);
+
+  historyState.public = {
+    loading: false,
+    hasMore: true,
+    oldestTs: 0,
+    oldestID: 0
+  };
+
+  Object.keys(unreadBoundaryMap)
+    .forEach(k => delete unreadBoundaryMap[k]);
+
+  Object.keys(unreadBoundaryShown)
+    .forEach(k => delete unreadBoundaryShown[k]);
+
+  messagesWrap.innerHTML = '';
+
+  updateMentionBell();
+}
+
+function sortMessagesAsc(list) {
+  list.sort((a, b) => {
+    if ((a.timestamp || 0) !== (b.timestamp || 0)) {
+      return (a.timestamp || 0) - (b.timestamp || 0);
+    }
+
+    return (a.seq || a.db_id || 0) -
+           (b.seq || b.db_id || 0);
+  });
+}
+
+function makeMsgKey(m) {
+  return m.id ||
+    `${m.type}_${m.from}_${m.to}_${m.timestamp}_${m.content}_${m.file_url || ''}`;
+}
+
+function dedupeAndInsertMessages(chat, newMessages, prepend = false) {
+  if (!Array.isArray(newMessages) || !newMessages.length) {
+    return;
+  }
+
+  const targetList =
+    chat === 'public'
+      ? publicHistory
+      : (privateHistory[chat] || (privateHistory[chat] = []));
+
+  const seen = new Set(targetList.map(makeMsgKey));
+  const filtered = [];
+
+  for (const m of newMessages) {
+    const key = makeMsgKey(m);
+
+    if (!seen.has(key)) {
+      seen.add(key);
+      filtered.push(m);
+    }
+  }
+
+  if (!filtered.length) return;
+
+  if (prepend) {
+    targetList.unshift(...filtered);
+  } else {
+    targetList.push(...filtered);
+  }
+
+  sortMessagesAsc(targetList);
+
+  trimHistoryList(
+    targetList,
+    chat === 'public'
+      ? MAX_PUBLIC_HISTORY
+      : MAX_PRIVATE_HISTORY,
+    chat === 'public'
+  );
+
+  updateOldestCursor(chat);
+}
+
+function handleIncomingChatMessage(msg) {
+  const isPublic = msg.type === 'public';
+
+  const peer =
+    isPublic
+      ? 'public'
+      : (msg.from === myNick ? msg.to : msg.from);
+
+  if (!isPublic) ensurePrivateState(peer);
+
+  dedupeAndInsertMessages(peer, [msg], false);
+
+  if (msg.from !== myNick && currentChat !== peer) {
+    unreadCounts[peer] =
+      (unreadCounts[peer] || 0) + 1;
+  }
+
+  if (shouldAddMentionNotification(msg)) {
+    pushMentionNotification(msg);
+
+    if (currentChat === 'public') {
+      showMentionToast(msg);
+    }
+  }
+
+  if (currentChat === peer) {
+    appendMsgUI(msg);
+  }
+
+  updateUserList();
+}
+
+function getBoundaryInsertInfo(chat) {
+  if (!unreadBoundaryShown[chat]) return null;
+  if (unreadBoundaryMap[chat] === undefined) return null;
+
+  const boundaryTs = unreadBoundaryMap[chat];
+
+  const rows =
+    [...messagesWrap.querySelectorAll('.msg-row')];
+
+  let targetRow = null;
+
+  for (const row of rows) {
+    const ts =
+      parseInt(row.dataset.timestamp || '0', 10);
+
+    if (ts <= boundaryTs) {
+      targetRow = row;
+      break;
+    }
+  }
+
+  return { targetRow, boundaryTs };
+}
+
+function insertBoundaryDividerIfNeeded(chat) {
+  const old =
+    messagesWrap.querySelector(
+      '.history-divider[data-unread-boundary="1"]'
+    );
+
+  if (old) old.remove();
+
+  const info = getBoundaryInsertInfo(chat);
+
+  if (!info || !info.targetRow) return;
+
+  const divider = createDividerNode();
+
+  messagesWrap.insertBefore(divider, info.targetRow);
+}
+
+function renderMessages(options = {}) {
+  const shouldScrollBottom =
+    options.scrollBottom !== false;
+
+  messagesWrap.innerHTML = '';
+  publicMsgIndex.clear();
+
+  messagesWrap.appendChild(renderHistoryActions());
+
+  const list =
+    currentChat === 'public'
+      ? publicHistory
+      : (privateHistory[currentChat] || []);
+
+  list.forEach(appendMsgUIWithoutScroll);
+
+  trimMessageDom();
+  insertBoundaryDividerIfNeeded(currentChat);
+
+  if (shouldScrollBottom) {
+    scheduleStickyBottom([0, 80, 180, 420]);
+    bindImageLoadHandlers(messagesWrap, true);
+  } else {
+    bindImageLoadHandlers(messagesWrap, false);
+  }
+}
+
+function checkUnreadBoundaryCross(chat, loadedMessages) {
+  if (!Array.isArray(loadedMessages) || !loadedMessages.length) return;
+  if (unreadBoundaryShown[chat]) return;
+  if (unreadBoundaryMap[chat] === undefined) return;
+
+  const boundaryTs = unreadBoundaryMap[chat];
+
+  const crossed =
+    loadedMessages.some(m => (m.timestamp || 0) <= boundaryTs);
+
+  if (!crossed) return;
+
+  unreadBoundaryShown[chat] = true;
+
+  if (currentChat === chat) {
+    renderMessages();
+
+    t(
+      '目前已无未读消息，以下为更早的已读历史',
+      'info'
+    );
+  }
+}
+
+function findLatestUnreadMessageInBatch(chat, messages) {
+  if (!Array.isArray(messages) || !messages.length) return null;
+  if (unreadBoundaryMap[chat] === undefined) return null;
+
+  const boundaryTs = unreadBoundaryMap[chat];
+
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const m = messages[i];
+
+    if ((m.timestamp || 0) > boundaryTs) {
+      return m;
+    }
+  }
+
+  return null;
+}
+
+function findLatestMessageInBatch(messages) {
+  if (!Array.isArray(messages) || !messages.length) return null;
+  return messages[messages.length - 1] || null;
+}
+
+function scrollMessageNearInputById(id) {
+  if (!id) return;
+
+  requestAnimationFrame(() => {
+    const el =
+      messagesWrap.querySelector(`[data-id="${id}"]`);
+
+    if (!el) return;
+
+    const targetTop =
+      el.offsetTop -
+      messagesWrap.clientHeight +
+      el.offsetHeight +
+      24;
+
+    messagesWrap.scrollTop =
+      Math.max(0, targetTop);
+
+    bindImageLoadHandlers(el, true);
+  });
+}
+
+function loadMoreHistory() {
+  const state = getChatState(currentChat);
+
+  if (state.loading) return;
+  if (state.hasMore === false) return;
+
+  maybeRecordUnreadBoundary(currentChat);
+
+  state.loading = true;
+
+  renderMessages({ scrollBottom: false });
+
+  const payload = {
+    type: 'load_more',
+    to: currentChat === 'public' ? '' : currentChat,
+    timestamp: state.oldestTs || 0,
+    seq: state.oldestID || 0
+  };
+
+  sendWs(payload);
+}
+
+function connectWs(isReconnect = false) {
+  if (!myNick || !myPassword) return;
+
+  wsManuallyClosed = false;
+  loginConfirmed = false;
+
+  clearHeartbeat();
+
+  if (reconnectTimer) {
+    clearTimeout(reconnectTimer);
+    reconnectTimer = null;
+  }
+
+  if (!isReconnect) {
+    reconnectAttempts = 0;
+    resetRuntimeOnFreshLogin();
+  }
+
+  setConnStatus(
+    isReconnect ? '正在重连...' : '正在连接...',
+    true
+  );
+
+  const proto =
+    location.protocol === 'https:' ? 'wss' : 'ws';
+
+  ws = new WebSocket(`${proto}://${location.host}/ws`);
+
+  ws.onopen = () => {
+    reconnectAttempts = 0;
+
+    setConnStatus('已连接，正在同步...', true);
+
+    ws.send(JSON.stringify({
+      type: 'nick',
+      from: myNick,
+      password: myPassword
+    }));
+
+    startHeartbeat();
+  };
+
+  ws.onmessage = e => {
+    let msg;
+
+    try {
+      msg = JSON.parse(e.data);
+    } catch {
+      return;
+    }
+
+    if (msg.type === 'pong') {
+      if (heartbeatTimeoutTimer) {
+        clearTimeout(heartbeatTimeoutTimer);
+        heartbeatTimeoutTimer = null;
+      }
+
+      return;
+    }
+
+    if (
+      !loginConfirmed &&
+      [
+        'read_sync',
+        'mention_read_sync',
+        'unread_sync',
+        'history_done',
+        'online',
+        'public',
+        'private',
+        'system'
+      ].includes(msg.type)
+    ) {
+      loginConfirmed = true;
+
+      setConnStatus('', false);
+
+      flushPendingMessages();
+    }
+
+    if (msg.type === 'read_sync') {
+      try {
+        lastReadTimes =
+          msg.last_read_map ||
+          JSON.parse(msg.content || '{}') ||
+          {};
+      } catch {
+        lastReadTimes = {};
+      }
+
+    } else if (msg.type === 'mention_read_sync') {
+      try {
+        mentionReadMap =
+          JSON.parse(msg.content || '{}') ||
+          {};
+      } catch {
+        mentionReadMap = {};
+      }
+
+    } else if (msg.type === 'unread_sync') {
+      unreadCounts = msg.unread_map || {};
+      updateUserList();
+
+    } else if (msg.type === 'history_page') {
+      const chat = msg.to || 'public';
+      const messages =
+        Array.isArray(msg.messages) ? msg.messages : [];
+
+      const state = getChatState(chat);
+
+      state.loading = false;
+      state.hasMore = !!msg.has_more;
+
+      let prevHeight = 0;
+      let prevTop = 0;
+
+      const isCurrentChat = currentChat === chat;
+
+      if (isCurrentChat) {
+        prevHeight = messagesWrap.scrollHeight;
+        prevTop = messagesWrap.scrollTop;
+      }
+
+      const latestUnreadMsg =
+        findLatestUnreadMessageInBatch(chat, messages);
+
+      if (messages.length) {
+        dedupeAndInsertMessages(chat, messages, true);
+        checkUnreadBoundaryCross(chat, messages);
+      }
+
+      if (isCurrentChat) {
+        renderMessages({ scrollBottom: false });
+
+        if (latestUnreadMsg && latestUnreadMsg.id) {
+          scrollMessageNearInputById(latestUnreadMsg.id);
+
+        } else {
+          requestAnimationFrame(() => {
+            const newHeight = messagesWrap.scrollHeight;
+
+            messagesWrap.scrollTop =
+              Math.max(0, newHeight - prevHeight + prevTop);
+
+            bindImageLoadHandlers(messagesWrap, false);
+          });
+        }
+      }
+
+    } else if (msg.type === 'history_done') {
+      if (Array.isArray(msg.messages) && msg.messages.length) {
+        for (const m of msg.messages) {
+          const peer =
+            m.type === 'public'
+              ? 'public'
+              : (m.from === myNick ? m.to : m.from);
+
+          if (peer !== 'public') ensurePrivateState(peer);
+
+          dedupeAndInsertMessages(peer, [m], false);
+        }
+      }
+
+      historyState.public.hasMore = !!msg.public_has_more;
+
+      updateOldestCursor('public');
+
+      const privateMore =
+        msg.private_has_more_map || {};
+
+      Object.keys(privateHistory).forEach(peer => {
+        const st = ensurePrivateState(peer);
+
+        if (Object.prototype.hasOwnProperty.call(privateMore, peer)) {
+          st.hasMore = !!privateMore[peer];
+
+        } else if (st.hasMore === null) {
+          st.hasMore = true;
+        }
+
+        updateOldestCursor(peer);
+      });
+
+      renderMessages();
+      updateUserList();
+      setConnStatus('', false);
+
+    } else if (msg.type === 'online') {
+      allUsers =
+        (msg.user_list || [])
+          .filter(u => u.name !== myNick);
+
+      updateUserList();
+
+      if (
+        currentChat === 'public' &&
+        document.activeElement === msgInput
+      ) {
+        showMentionPanel();
+      }
+
+    } else if (msg.type === 'public' || msg.type === 'private') {
+      handleIncomingChatMessage(msg);
+
+    } else if (msg.type === 'system') {
+      if (
+        msg.content.includes("密码") ||
+        msg.content.includes("昵称")
+      ) {
+        wsManuallyClosed = true;
+        loginConfirmed = false;
+
+        showNickModal(msg.content);
+
+        setConnStatus('', false);
+
+        try { ws.close(); } catch {}
+
+      } else {
+        appendSystemMsg(msg.content);
+        t(msg.content, 'warn');
+      }
+    }
+  };
+
+  ws.onerror = () => {
+    setConnStatus('连接异常', true);
+  };
+
+  ws.onclose = () => {
+    clearHeartbeat();
+
+    loginConfirmed = false;
+
+    if (!wsManuallyClosed) {
+      scheduleReconnect();
+    }
+  };
+}
+
+document.getElementById('nick-confirm').onclick = () => {
+  const n =
+    document.getElementById('nick-input')
+      .value
+      .trim();
+
+  const p =
+    document.getElementById('nick-pass')
+      .value
+      .trim();
+
+  if (!n || !p) return;
+
+  myNick = n;
+  myPassword = p;
+  currentChat = 'public';
+
+  document.getElementById('my-nick-badge')
+    .textContent = '@' + myNick;
+
+  document.getElementById('nick-err')
+    .textContent = '';
+
+  hideNickModal();
+
+  connectWs(false);
+};
+
+uploadBtn.onclick = () => fileInput.click();
+
+fileInput.addEventListener('change', handleFileSelected);
+
+document.getElementById('send-btn').onclick = () => {
+  const content = msgInput.value.trim();
+
+  if (!content) return;
+
+  if (content.length > MAX_MESSAGE_LENGTH) {
+    t(
+      `消息不能超过 ${MAX_MESSAGE_LENGTH} 个字符`,
+      'warn'
+    );
+
+    return;
+  }
+
+  const payload = {
+    type: currentChat === 'public' ? 'public' : 'private',
+    to: currentChat === 'public' ? '' : currentChat,
+    content
+  };
+
+  if (currentChat === 'public') {
+    payload.mentions = parseMentionsFromText(content);
+  }
+
+  const sent = sendWs(payload);
+
+  if (sent || (myNick && myPassword)) {
+    msgInput.value = '';
+    autoResize();
+    hideMentionPanel();
+    msgInput.focus();
+  }
+};
+
+document.getElementById('public-entry').onclick = () => {
+  clickUser('public');
+};
+
+document.getElementById('menu-btn').onclick = () => {
+  document.getElementById('sidebar')
+    .classList.add('open');
+
+  document.getElementById('overlay')
+    .classList.add('show');
+};
+
+document.getElementById('overlay').onclick = closeSidebar;
+
+mentionBell.onclick = () => {
+  const item = consumeNextMentionNotification();
+
+  if (!item) return;
+
+  if (!isMentionAlreadyRead(item)) {
+    markMentionReadLocal(item.id);
+    markMentionReadRemote(item.id);
+  }
+
+  jumpToMessage(item.id);
+};
+
+mentionPanel.addEventListener(
+  'mousedown',
+  e => e.preventDefault()
+);
+
+mentionPanel.addEventListener('click', e => {
+  const checkbox =
+    e.target.closest('.mention-checkbox');
+
+  if (checkbox) {
+    e.stopPropagation();
+
+    if (checkbox.dataset.type === 'all-checkbox') {
+      return toggleSelectAllUsers(checkbox.checked);
+    }
+
+    if (checkbox.dataset.type === 'user-checkbox') {
+      return toggleSelectOneUser(
+        checkbox.dataset.name,
+        checkbox.checked
+      );
+    }
+  }
+
+  const insertBtn =
+    e.target.closest('#mention-insert-btn');
+
+  if (insertBtn) {
+    if (!selectedMentionUsers.size) return;
+
+    return insertSelectedMentionUsers();
+  }
+
+  const item =
+    e.target.closest('.mention-item');
+
+  if (!item) return;
+
+  const type = item.dataset.type;
+  const name = item.dataset.name;
+
+  if (type === 'all') return insertAllUsersMention();
+  if (type === 'user') return insertMention(name, false);
+});
+
+userListEl.addEventListener('click', e => {
+  const item = e.target.closest('.user-item');
+
+  if (!item) return;
+
+  const nick = item.dataset.chat;
+
+  if (!nick) return;
+
+  clickUser(nick);
+});
+
+messagesWrap.addEventListener('click', e => {
+  if (e.target.closest('#load-more-btn')) return;
+
+  const imageBubble = e.target.closest('.image-bubble');
+
+  if (imageBubble) {
+    const url = imageBubble.dataset.fullUrl;
+
+    if (url) openImageViewer(url);
+
+    return;
+  }
+
+  const userEl = e.target.closest('[data-user]');
+
+  if (!userEl) return;
+
+  const name = userEl.dataset.user;
+
+  if (!name || name === myNick) return;
+
+  clickUser(name);
+});
+
+imageViewer.addEventListener('click', e => {
+  if (
+    e.target.id === 'image-viewer' ||
+    e.target.id === 'image-viewer-close'
+  ) {
+    closeImageViewer();
+  }
+});
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    closeImageViewer();
+  }
+});
+
+msgInput.onkeydown = e => {
+  if (
+    mentionPanel.classList.contains('show') &&
+    mentionCandidates.length
+  ) {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+
+      mentionActiveIndex =
+        (mentionActiveIndex + 1) %
+        mentionCandidates.length;
+
+      renderMentionPanel();
+
+      return;
+    }
+
+    if (e.key === 'ArrowUp') {
+      e.preventDefault();
+
+      mentionActiveIndex =
+        (
+          mentionActiveIndex -
+          1 +
+          mentionCandidates.length
+        ) %
+        mentionCandidates.length;
+
+      renderMentionPanel();
+
+      return;
+    }
+
+    if (e.key === 'Enter' && !e.shiftKey) {
+      const info = getMentionQueryInfo();
+
+      if (info) {
+        e.preventDefault();
+
+        const item =
+          mentionCandidates[mentionActiveIndex];
+
+        if (!item) return;
+
+        if (item.type === 'all') {
+          insertAllUsersMention();
+        } else {
+          insertMention(item.name, false);
+        }
+
+        return;
+      }
+    }
+
+    if (e.key === 'Escape') {
+      hideMentionPanel();
+      return;
+    }
+  }
+
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+
+    document.getElementById('send-btn').click();
+  }
+};
+
+msgInput.addEventListener('input', () => {
+  if (msgInput.value.length > MAX_MESSAGE_LENGTH) {
+    msgInput.value =
+      msgInput.value.slice(0, MAX_MESSAGE_LENGTH);
+  }
+
+  autoResize();
+
+  if (currentChat === 'public') {
+    showMentionPanel();
+  } else {
+    hideMentionPanel();
+  }
+});
+
+msgInput.addEventListener('click', () => {
+  if (currentChat === 'public') {
+    showMentionPanel();
+  }
+});
+
+msgInput.addEventListener('focus', () => {
+  scheduleViewportLayout();
+
+  setTimeout(() => scrollBottom(true), 150);
+
+  if (currentChat === 'public') {
+    setTimeout(showMentionPanel, 0);
+  }
+});
+
+msgInput.addEventListener('blur', () => {
+  scheduleViewportLayout();
+
+  setTimeout(() => {
+    if (document.activeElement !== msgInput) {
+      hideMentionPanel();
+    }
+  }, 120);
+});
+
+if (!myNick || !loginConfirmed) {
+  showNickModal();
+}
+  
+syncViewportLayout();
+
+window.addEventListener(
+  'resize',
+  scheduleViewportLayout
+);
+
+window.addEventListener(
+  'orientationchange',
+  () => setTimeout(scheduleViewportLayout, 300)
+);
+
+if (window.visualViewport) {
+  window.visualViewport.addEventListener(
+    'resize',
+    scheduleViewportLayout
+  );
+
+  window.visualViewport.addEventListener(
+    'scroll',
+    scheduleViewportLayout
+  );
+}
+</script>
+</body>
+</html>
